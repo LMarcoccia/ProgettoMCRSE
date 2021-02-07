@@ -17,8 +17,6 @@ import matplotlib.pyplot as plt
 import geopy
 import json
 from tqdm import tqdm
-from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
 import geojson
 import folium
 
@@ -47,22 +45,6 @@ args = parser.parse_args()
 start = time.perf_counter()
 
 
-# sites = requests.get(args.sites_url)
-# routes = requests.get(args.routes_url)
-
-
-# if not os.path.exists(args.storage):
-#     os.makedirs(args.storage)
-
-# 	
-# open(args.sites_data, 'wb').write(sites.content)
-# open(args.routes_data, 'wb').write(routes.content)
-
-m = folium.Map(location=[-99.84374999999999,47.39834920035926], zoom_start=0.5)
-
-Data = os.path.join('NA.json')
-
-folium.GeoJson(Data, name='Nord America').add_to(m)
 
 df_sites = pd.read_csv(args.sites_data, names=['Airport_ID','Name','City','Country','IATA',
                                                 'ICAO','Latitude','Longitude','Altitude','Timezone',
@@ -79,31 +61,35 @@ df_sites = df_sites.drop(columns=['Airport_ID','ICAO','Timezone','DST','Tz_datab
 df_routes = df_routes.drop(columns=['Airline','Airline_ID','Source_airport_ID','Destination_airport_ID',
                                     'Codeshare','Stops','Equipment'], axis=0)
 
-    
+with open('PaesiNA.txt', 'r') as f:
+    paesi = []
+    for line in f:
+        line = line.strip('\n')
+        paesi += [line]
+
+NordAmerica = pd.DataFrame()
+hubs = df_sites[['Latitude','Longitude']]
+hubs = hubs.values.tolist()
+for k,hub in tqdm(enumerate(hubs)):
+    if df_sites['Country'][k] in paesi and df_sites['Type'][k] == 'airport':
+       NordAmerica = NordAmerica.append(df_sites.iloc[k], ignore_index=True)
+     
+NordAmerica = NordAmerica[['Name', 'City', 'Country', 'IATA', 'Latitude', 'Longitude', 'Altitude', 'Type']]        
+
+NordAmerica = NordAmerica.drop_duplicates()
+      
+NordAmerica.to_csv('NA_hubs.csv')
+
 siti = df_sites.rename(columns={'IATA' : 'Source_airport'})
 df_routes = pd.merge(df_routes, siti, on=['Source_airport'],how='left')
 siti = siti.rename(columns={'Source_airport' : 'Destination_airport'})
 df_routes = pd.merge(df_routes, siti, on=['Destination_airport'],how='left')
 df_routes = df_routes.dropna(axis=0,how='any')
 
-with open('PaesiNA.txt', 'r') as f:
-    paesi = []
-    for line in f:
-        paesi += [line]
+df_routes = df_routes.drop_duplicates()
 
-hubs = siti[['Latitude','Longitude']]
-hubs = hubs.values.tolist()
-for k,hub in enumerate(hubs):
-    if siti['Country'][k] in paesi and siti['Type'][k] == 'airport':
-       folium.Marker(hub, popup= siti['Name'][k]).add_to(m)
+path = os.path.join('Routes_A_to_B.csv')
 
-m.save('NordAmerica.html')
-    
-
-
-
-
-
-
+df_routes.to_csv(path)
 
 stop = time.perf_counter() - start
