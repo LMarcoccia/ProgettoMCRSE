@@ -6,46 +6,73 @@ Created on Mon Feb  8 16:54:28 2021
 """
 
 import pandas as pd
+import requests
 import os
 
+#--------------------------------------------------------------------------------------------------------------------------#
+
+def crea_directories(continenti, args):
+    
+    '''La function crea le directories per l'organizzazione dei file di output.'''
+    
+    #creazione directories per i file di output
+    for c in continenti:
+        if not os.path.exists(args.results + c):
+            os.makedirs(args.results + c)
+
+#--------------------------------------------------------------------------------------------------------------------------#
 
 def importa_dati(args):
     
-    '''La function importa i dati in dataframe pronti per l'utilizzo.'''
+    '''La function scarica da internet i dati e li importa in dataframe pronti per l'utilizzo.'''
     
-    df_sites = pd.read_csv(args.sites_data, names=['Airport_ID','Name','City','Country','IATA',
+    #download dei dati
+    sites = requests.get(args.sites_url)
+    routes = requests.get(args.routes_url)
+	
+    #salvataggio dei dati
+    open(args.sites_data, 'wb').write(sites.content)
+    open(args.routes_data, 'wb').write(routes.content)   
+ 
+    #lettura dei dataframe
+    sites = pd.read_csv(args.sites_data, names = ['Airport_ID','Name','City','Country','IATA',
                                                 'ICAO','Latitude','Longitude','Altitude','Timezone',
                                                 'DST','Tz_database_time_zone','Type','Source'])
 
-    df_routes = pd.read_csv(args.routes_data, names=['Airline','Airline_ID','Source_airport',
+    routes = pd.read_csv(args.routes_data, names = ['Airline','Airline_ID','Source_airport',
                                                   'Source_airport_ID','Destination_airport',
                                                   'Destination_airport_ID','Codeshare',
                                                   'Stops','Equipment'])
 
-
-    #pulizia e preparazione dei dati
-    df_sites = df_sites.drop(columns=['Airport_ID','ICAO','Timezone','DST','Tz_database_time_zone','Source'],axis=0)
-    df_routes = df_routes.drop(columns=['Airline','Airline_ID','Source_airport_ID','Destination_airport_ID',
-                                        'Codeshare','Stops','Equipment'], axis=0)
+    #eliminazione colonne superflue
+    sites = sites.drop(columns = ['Airport_ID','ICAO','Timezone','DST','Tz_database_time_zone','Source'], axis = 0)
+    routes = routes.drop(columns = ['Airline','Airline_ID','Source_airport_ID','Destination_airport_ID',
+                                        'Codeshare','Stops','Equipment'], axis = 0)
     
-    return df_sites, df_routes
+    return sites, routes
 
+#--------------------------------------------------------------------------------------------------------------------------#
 
-def pulizia_dati(df_sites,df_routes):
+def pulizia_dati(sites, routes, args):
     
     '''La function pulisce e sistema i dati precedentemente importati e li salva nella cartella del continente
        considerato per eventuali usi futuri.'''
     
-    siti = df_sites.rename(columns={'IATA' : 'Source_airport'})
-    df_routes = pd.merge(df_routes, siti, on=['Source_airport'],how='left')
+    #inserimento delle informazioni sull'aeroporto di partenza nel dataframe delle rotte
+    sites = sites.rename(columns = {'IATA' : 'Source_airport'})
+    routes = pd.merge(routes, sites, on = ['Source_airport'], how = 'left')
     
-    siti = siti.rename(columns={'Source_airport' : 'Destination_airport'})
-    df_routes = pd.merge(df_routes, siti, on=['Destination_airport'],how='left')
+    #inserimento delle informazioni sull'aeroporto di arrivo nel dataframe delle rotte
+    sites = sites.rename(columns = {'Source_airport' : 'Destination_airport'})
+    routes = pd.merge(routes, sites, on = ['Destination_airport'], how = 'left')
     
-    df_routes = df_routes.dropna(axis=0,how='any')
+    #eliminazione delle righe con valore nullo
+    routes = routes.dropna(axis = 0, how = 'any')
     
-    df_routes = df_routes.drop_duplicates()
+    #eliminazione dei duplicati
+    routes = routes.drop_duplicates()
     
-    path = os.path.join(f'Routes_AtoB_{continente}.csv')
-
-    df_routes.to_csv(path)
+    #salvataggio delle informazioni
+    routes.to_csv(args.routes_data_updated)
+    
+    return routes
