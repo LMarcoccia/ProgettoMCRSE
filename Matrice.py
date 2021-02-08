@@ -34,7 +34,7 @@ path = os.path.join('Routes_A_to_B.csv')
 
 routes = pd.read_csv(path)
 
-with open('PaesiNA.txt', 'r') as f:
+with open("C:\\Users\\lollo\\OneDrive\\Desktop\\MCRSE\\Tesina\\ProgettoMCRSE\\Data\\Paesi_per_Continenti\\PaesiSA.txt", 'r') as f:
     paesi = []
     for line in f:
         line = line.strip('\n')
@@ -68,7 +68,7 @@ start_mapping_process = timer()
 
 m = folium.Map(location=[-99.84374999999999,47.39834920035926], zoom_start=0.5)
 
-Data = os.path.join('NA.json')
+Data = "C:\\Users\\lollo\\OneDrive\\Desktop\\MCRSE\\Tesina\\ProgettoMCRSE\\Data\\Geojson_Continenti\\SA.json"
 
 folium.GeoJson(Data, name='Nord America').add_to(m)  
 
@@ -85,7 +85,7 @@ for k in tqdm(selezionatiNA.index):
     arrivo = selezionatiNA['Name_y'][k]
     grado_a = np.count_nonzero(np.array(A.loc[arrivo]))
     coordinates_a = (selezionatiNA['Latitude_y'][k],selezionatiNA['Longitude_y'][k])
-    if grado_p >= 30 and grado_a >= 30:
+    if grado_p >= 10 and grado_a >= 10:
         if coordinates_p not in già_stampati:
            folium.Marker(coordinates_p, popup= selezionatiNA['Name_x'][k]).add_to(m)
         if coordinates_a not in già_stampati:
